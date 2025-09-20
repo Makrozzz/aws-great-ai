@@ -13,9 +13,8 @@ async function generateCampaign(description, imagePath) {
   
   Format as JSON: {"caption": "", "hashtags": [], "imagePrompt": ""}`;
   
-  const aiResponse = await generateText(prompt);
-  const campaign = JSON.parse(aiResponse);
-  console.log('Bedrock AI Response:', aiResponse);
+  const campaign = await generateText(prompt);
+  console.log('Bedrock AI Response:', campaign);
   
   // Extract keywords from description
   const keywords = await extractKeywords(description);

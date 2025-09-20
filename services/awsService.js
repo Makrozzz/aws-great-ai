@@ -2,7 +2,7 @@ const { BedrockRuntimeClient, InvokeModelCommand } = require("@aws-sdk/client-be
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 const bedrockClient = new BedrockRuntimeClient({
-  region: "us-east-1", // Change to your region
+  region: process.env.AWS_REGION || "us-east-1",
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
@@ -10,13 +10,15 @@ const bedrockClient = new BedrockRuntimeClient({
 });
 
 async function generateText(prompt) {
+  console.log('🔍 Generating text with prompt:', prompt.substring(0, 100) + '...');
+  
   const input = {
     modelId: "meta.llama3-8b-instruct-v1:0",
     contentType: "application/json",
     accept: "application/json",
     body: JSON.stringify({
       prompt: prompt,
-      max_gen_len: 300,   // same as maxTokenCount in Nova
+      max_gen_len: 300,
       temperature: 0.7,
       top_p: 0.9
     })
@@ -26,26 +28,32 @@ async function generateText(prompt) {
   const response = await bedrockClient.send(command);
 
   const decoded = new TextDecoder().decode(response.body);
-  let responseBody;
-  try {
-    responseBody = JSON.parse(decoded);
-  } catch (e) {
-    console.error("Llama 3 returned non-JSON:", decoded);
-    throw new Error("Malformed response from Llama 3");
-  }
-
-  console.log("Llama 3 raw response:", JSON.stringify(responseBody, null, 2));
-
-  // ✅ Correct parsing for Llama 3
+  const responseBody = JSON.parse(decoded);
+  
+  console.log('✅ Bedrock response received');
+  
   if (responseBody.generation) {
-    return responseBody.generation;
+    // Extract JSON from the generation text
+    const generatedText = responseBody.generation;
+    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+    
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        console.error('Failed to parse extracted JSON:', e.message);
+        throw new Error('Invalid JSON in Bedrock response');
+      }
+    }
+    
+    throw new Error('No JSON found in Bedrock response');
   }
-
+  
   throw new Error("No generation returned from Llama 3");
 }
 
 const s3Client = new S3Client({
-  region: "us-east-1",
+  region: process.env.AWS_REGION || "us-east-1",
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
@@ -228,33 +236,35 @@ module.exports = {
   uploadToS3
 }
 
-async function main() {
-  const prompt = process.argv.slice(2).join(" ");
-  if (!prompt) {
-    console.log("Usage: node generateImageCLI.js <your prompt>");
-    return;
-  }
-
-  try {
-    console.log("Generating image for prompt:", prompt);
-    const imageBuffer = await generateImage(prompt);
-
-    // Quick check if image was actually generated
-    if (!imageBuffer || imageBuffer.length === 0) {
-      console.error("❌ Image generation failed: no data returned from Titan.");
+// Only run CLI if called directly
+if (require.main === module) {
+  async function main() {
+    const prompt = process.argv.slice(2).join(" ");
+    if (!prompt) {
+      console.log("Usage: node generateImageCLI.js <your prompt>");
       return;
     }
 
-    console.log("✅ Image generated successfully! Buffer size:", imageBuffer.length);
+    try {
+      console.log("Generating image for prompt:", prompt);
+      const imageBuffer = await generateImage(prompt);
 
-    const key = `cli-images/${Date.now()}.png`;
-    const url = await uploadToS3(imageBuffer, key);
+      if (!imageBuffer || imageBuffer.length === 0) {
+        console.error("❌ Image generation failed: no data returned from Titan.");
+        return;
+      }
 
-    console.log("✅ Image uploaded successfully!");
-    console.log("S3 URL:", url);
-  } catch (err) {
-    console.error("❌ Failed to generate/upload image:", err.message);
+      console.log("✅ Image generated successfully! Buffer size:", imageBuffer.length);
+
+      const key = `cli-images/${Date.now()}.png`;
+      const url = await uploadToS3(imageBuffer, key);
+
+      console.log("✅ Image uploaded successfully!");
+      console.log("S3 URL:", url);
+    } catch (err) {
+      console.error("❌ Failed to generate/upload image:", err.message);
+    }
   }
-}
 
-main();
+  main();
+}
