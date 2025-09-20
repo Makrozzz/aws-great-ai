@@ -136,6 +136,79 @@ button[type="submit"]:disabled {
   cursor: not-allowed;
 }
 
+.generation-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.generate-text-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.generate-text-btn:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.generate-text-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.generate-image-btn {
+  background: #fd7e14;
+  color: white;
+  border: none;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.generate-image-btn:hover:not(:disabled) {
+  background: #e8680e;
+  transform: translateY(-1px);
+}
+
+.generate-image-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.generate-full-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.generate-full-btn:hover:not(:disabled) {
+  background: #5a67d8;
+  transform: translateY(-1px);
+}
+
+.generate-full-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .instagram-post {
   background: white;
   border-radius: 15px;
@@ -209,6 +282,16 @@ button[type="submit"]:disabled {
   cursor: pointer;
   margin-top: 1rem;
   width: 100%;
+}
+
+.save-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.placeholder-text {
+  color: #999;
+  font-style: italic;
 }
 
 .campaign-history {
