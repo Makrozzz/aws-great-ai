@@ -17,14 +17,7 @@ async function generateCampaign(description, imagePath) {
   console.log('Bedrock AI Response:', campaign);
   
   // Extract keywords from description
-  const keywords = await extractKeywords(description);
-  
-  // Generate product image (mock)
-  // Generate product image
-  const imageBuffer = await generateImage(campaign.imagePrompt);
-  const key = `campaign-images/${Date.now()}.png`;
-  const imageUrl = await uploadToS3(imageBuffer, key);
-
+  const keywords = extractKeywords(description);
   
   return {
     id: uuidv4(),
@@ -32,7 +25,7 @@ async function generateCampaign(description, imagePath) {
     caption: campaign.caption,
     hashtags: campaign.hashtags,
     keywords,
-    imageUrl,
+    imageUrl: "https://picsum.photos/512/512",
     createdAt: new Date()
   };
 }
