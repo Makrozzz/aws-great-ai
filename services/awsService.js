@@ -66,8 +66,7 @@ async function uploadToS3(buffer, key, contentType = "image/png") {
     Bucket: process.env.AWS_S3_BUCKET,
     Key: key,
     Body: buffer,
-    ContentType: contentType,
-    ACL: "public-read"
+    ContentType: contentType
   };
 
   const command = new PutObjectCommand(params);
@@ -76,26 +75,26 @@ async function uploadToS3(buffer, key, contentType = "image/png") {
   return `https://${params.Bucket}.s3.amazonaws.com/${key}`;
 }
 
-// Generate image using Titan Image Generator G1
+// Generate image using Nova Canvas
 async function generateImage(prompt) {
   console.log("🎨 Starting image generation with prompt:", prompt);
   
   const input = {
-    modelId: "amazon.titan-image-generator-v1:0", // Try this model ID instead
+    modelId: "amazon.nova-canvas-v1:0",
     contentType: "application/json",
     accept: "application/json",
     body: JSON.stringify({
-      taskType: "TEXT_IMAGE", // Add task type
+      taskType: "TEXT_IMAGE",
       textToImageParams: {
         text: prompt,
-        negativeText: "blurry, low quality, distorted" // Optional negative prompt
+        negativeText: "blurry, low quality, distorted"
       },
       imageGenerationConfig: {
         numberOfImages: 1,
         height: 512,
         width: 512,
-        cfgScale: 8.0, // Guidance scale
-        seed: Math.floor(Math.random() * 1000000) // Random seed
+        cfgScale: 8.0,
+        seed: Math.floor(Math.random() * 1000000)
       }
     })
   };
@@ -106,52 +105,19 @@ async function generateImage(prompt) {
     const command = new InvokeModelCommand(input);
     const response = await bedrockClient.send(command);
 
-    console.log("📥 Raw response received, body length:", response.body.length);
-
     const decoded = new TextDecoder().decode(response.body);
-    console.log("🔍 Decoded response:", decoded.substring(0, 200) + "...");
+    const responseBody = JSON.parse(decoded);
 
-    let responseBody;
-    try {
-      responseBody = JSON.parse(decoded);
-      console.log("✅ Successfully parsed JSON response");
-    } catch (e) {
-      console.error("❌ Failed to parse JSON:", e.message);
-      console.error("Raw response:", decoded);
-      throw new Error("Malformed response from Titan Image Generator");
-    }
+    console.log("✅ Nova Canvas response received");
 
-    console.log("📋 Response structure:", Object.keys(responseBody));
-
-    // Check different possible response structures
     if (responseBody.images && responseBody.images[0]) {
-      console.log("✅ Found image in 'images' array");
       return Buffer.from(responseBody.images[0], "base64");
-    } else if (responseBody.artifacts && responseBody.artifacts[0] && responseBody.artifacts[0].base64) {
-      console.log("✅ Found image in 'artifacts' array");
-      return Buffer.from(responseBody.artifacts[0].base64, "base64");
-    } else if (responseBody.image) {
-      console.log("✅ Found image in 'image' field");
-      return Buffer.from(responseBody.image, "base64");
     } else {
-      console.error("❌ No image found in response");
-      console.error("Full response:", JSON.stringify(responseBody, null, 2));
-      throw new Error("No image data found in Titan response");
+      throw new Error("No image data found in Nova Canvas response");
     }
 
   } catch (error) {
     console.error("❌ Error during image generation:", error);
-    
-    // Check if it's a model access issue
-    if (error.message && error.message.includes("AccessDeniedException")) {
-      throw new Error("Access denied to Titan Image Generator. Please check model access in AWS Bedrock console.");
-    }
-    
-    // Check if it's a region issue
-    if (error.message && error.message.includes("ValidationException")) {
-      throw new Error("Model validation failed. Check if the model is available in your region (us-east-1).");
-    }
-    
     throw error;
   }
 }
