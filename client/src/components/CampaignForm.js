@@ -1,210 +1,151 @@
-import React, { useState } from 'react';
-import CampaignPreview from './CampaignPreview';
+import React from 'react';
 
-function CampaignForm() {
-  const [formData, setFormData] = useState({
-    description: '',
-    image: null
-  });
-  const [campaign, setCampaign] = useState({
-    id: null,
-    description: '',
-    caption: '',
-    hashtags: [],
-    keywords: [],
-    imageUrl: '',
-    imagePrompt: ''
-  });
-  const [loading, setLoading] = useState({
-    text: false,
-    image: false,
-    full: false
-  });
-
-  const handleGenerateText = async () => {
-    if (!formData.description.trim()) {
-      alert('Please enter a description first');
-      return;
-    }
-
-    console.log('Generate text button clicked');
-    setLoading(prev => ({ ...prev, text: true }));
-
-    try {
-      const response = await fetch('http://localhost:8080/api/campaigns/generate-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: formData.description })
-      });
-      const result = await response.json();
-      
-      setCampaign(prev => ({
-        ...prev,
-        description: formData.description,
-        caption: result.caption,
-        hashtags: result.hashtags,
-        keywords: result.keywords,
-        imagePrompt: result.imagePrompt
-      }));
-    } catch (error) {
-      console.error('Error generating text:', error);
-      alert('Failed to generate text content. Please try again.');
-    } finally {
-      setLoading(prev => ({ ...prev, text: false }));
-    }
+const CampaignForm = ({ data, onChange, onGenerate, loading }) => {
+  const handleInputChange = (field, value) => {
+    onChange({ [field]: value });
   };
 
-  const handleGenerateImage = async () => {
-    const imagePrompt = campaign.imagePrompt || formData.description;
-    
-    if (!imagePrompt.trim()) {
-      alert('Please generate text content first or enter a description');
-      return;
-    }
-
-    console.log('Generate image button clicked');
-    setLoading(prev => ({ ...prev, image: true }));
-
-    try {
-      const response = await fetch('http://localhost:8080/api/campaigns/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          imagePrompt: campaign.imagePrompt,
-          description: formData.description 
-        })
-      });
-      const result = await response.json();
-      
-      setCampaign(prev => ({
-        ...prev,
-        imageUrl: result.imageUrl
-      }));
-
-      if (result.fallback) {
-        alert(`Image generation failed: ${result.error}. Using placeholder image.`);
-      }
-    } catch (error) {
-      console.error('Error generating image:', error);
-      alert('Failed to generate image. Please try again.');
-    } finally {
-      setLoading(prev => ({ ...prev, image: false }));
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log('Generate full campaign button clicked');
-    setLoading(prev => ({ ...prev, full: true }));
-
-    // ✅ Use formData from state, rename to avoid conflict
-    const payload = new FormData();
-    payload.append("description", formData.description);
-    if (formData.image) {
-      payload.append("image", formData.image);
-    }
-
-    try {
-      const response = await fetch('http://localhost:8080/api/campaigns/generate', {
-        method: 'POST',
-        body: payload
-      });
-      const result = await response.json();
-      setCampaign(result);
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, full: false }));
-    }
-  };
-
-  
-  const handleSave = async () => {
-    if (!campaign.caption && !campaign.imageUrl) {
-      alert('Please generate some content before saving');
-      return;
-    }
-
-    try {
-      const campaignToSave = {
-        ...campaign,
-        id: campaign.id || Date.now().toString(),
-        createdAt: new Date()
-      };
-
-      await fetch('http://localhost:8080/api/campaigns/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(campaignToSave)
-      });
-      alert('Campaign saved successfully!');
-    } catch (error) {
-      console.error('Error saving:', error);
-      alert('Failed to save campaign. Please try again.');
-    }
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    onChange({ productImages: files });
   };
 
   return (
-    <div className="campaign-form">
-      <div className="form-section">
-        <h2>Create New Campaign</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Describe your product/campaign goal:</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              placeholder="e.g., Eco-friendly water bottles for active lifestyle..."
-              required
-            />
-          </div>
-          
-          <div className="form-group">
-            <label>Upload reference image (optional):</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setFormData({...formData, image: e.target.files[0]})}
-            />
-          </div>
-
-          <div className="generation-buttons">
-            <button 
-              type="button" 
-              className="generate-text-btn"
-              onClick={handleGenerateText}
-              disabled={loading.text || !formData.description.trim()}
-            >
-              {loading.text ? 'Generating Text...' : 'Generate Text Content'}
-            </button>
-            
-            <button 
-              type="button" 
-              className="generate-image-btn"
-              onClick={handleGenerateImage}
-              disabled={loading.image || (!campaign.imagePrompt && !formData.description.trim())}
-            >
-              {loading.image ? 'Generating Image...' : 'Generate Image'}
-            </button>
-            
-            <button 
-              type="submit" 
-              className="generate-full-btn"
-              disabled={loading.full || loading.text || loading.image}
-            >
-              {loading.full ? 'Generating...' : 'Generate Full Campaign'}
-            </button>
-          </div>
-        </form>
+    <div className="card glitter-form">
+      <h2 style={{ marginBottom: '2rem', color: '#60a5fa' }}>Campaign Details</h2>
+      
+      {/* Product Description */}
+      <div className="form-group">
+        <label>Product/Campaign Description</label>
+        <textarea
+          value={data.description}
+          onChange={(e) => handleInputChange('description', e.target.value)}
+          className="form-control"
+          rows="4"
+          placeholder="Describe your product or campaign goals..."
+          style={{ resize: 'vertical' }}
+        />
       </div>
 
-      {(campaign.caption || campaign.imageUrl) && (
-        <div className="preview-section">
-          <CampaignPreview campaign={campaign} onSave={handleSave} />
+      {/* Image Upload */}
+      <div className="form-group">
+        <label>Product Images</label>
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="form-control"
+        />
+        {data.productImages.length > 0 && (
+          <div style={{ marginTop: '0.5rem', color: '#666', fontSize: '0.9rem' }}>
+            {data.productImages.length} image(s) selected
+          </div>
+        )}
+      </div>
+
+      {/* Content Style */}
+      <div className="form-group">
+        <label>Content Style</label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+          {['professional', 'funny', 'viral', 'minimalist'].map(style => (
+            <button
+              key={style}
+              type="button"
+              onClick={() => handleInputChange('contentStyle', style)}
+              className={`btn ${data.contentStyle === style ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ textTransform: 'capitalize' }}
+            >
+              {style}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
+
+      {/* Platform Format */}
+      <div className="form-group">
+        <label>Platform Format</label>
+        <select
+          value={data.platformFormat}
+          onChange={(e) => handleInputChange('platformFormat', e.target.value)}
+          className="form-control"
+        >
+          <option value="instagram-post">Instagram Post</option>
+          <option value="instagram-story">Instagram Story</option>
+          <option value="tiktok-video">TikTok Video</option>
+          <option value="facebook-post">Facebook Post</option>
+          <option value="banner">Banner Ad</option>
+        </select>
+      </div>
+
+      {/* Tone of Voice */}
+      <div className="form-group">
+        <label>Tone of Voice</label>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {['casual', 'persuasive', 'youthful', 'professional'].map(tone => (
+            <button
+              key={tone}
+              type="button"
+              onClick={() => handleInputChange('toneOfVoice', tone)}
+              className={`btn ${data.toneOfVoice === tone ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ textTransform: 'capitalize' }}
+            >
+              {tone}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Media Type */}
+      <div className="form-group">
+        <label>Media Type</label>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {['image', 'video', 'both'].map(type => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => handleInputChange('mediaType', type)}
+              className={`btn ${data.mediaType === type ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ textTransform: 'capitalize' }}
+            >
+              {type === 'both' ? 'Image + Video' : type}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Language */}
+      <div className="form-group">
+        <label>Language</label>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {[
+            { value: 'english', label: 'English' },
+            { value: 'malay', label: 'Bahasa Malaysia' },
+            { value: 'bilingual', label: 'Bilingual' }
+          ].map(lang => (
+            <button
+              key={lang.value}
+              type="button"
+              onClick={() => handleInputChange('language', lang.value)}
+              className={`btn ${data.language === lang.value ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Generate Button */}
+      <button
+        onClick={onGenerate}
+        disabled={loading || !data.description.trim()}
+        className="btn btn-primary"
+        style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', marginTop: '1rem' }}
+      >
+        {loading ? '🤖 Generating...' : '✨ Generate Campaign'}
+      </button>
     </div>
   );
-}
+};
 
 export default CampaignForm;

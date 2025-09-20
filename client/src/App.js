@@ -1,30 +1,42 @@
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Homepage from './components/Homepage';
 import Dashboard from './components/Dashboard';
-import CampaignForm from './components/CampaignForm';
+import CampaignGenerator from './components/CampaignGenerator';
 import CampaignHistory from './components/CampaignHistory';
+import Login from './components/Login';
+import Register from './components/Register';
 import './App.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [user, setUser] = useState({ name: 'Demo User' }); // Mock auth
+  const [user, setUser] = useState(localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null);
+
+  const handleLogin = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+  };
 
   return (
-    <div className="App">
-      <nav className="navbar">
-        <h1>Nebula.AI</h1>
-        <div className="nav-links">
-          <button onClick={() => setCurrentView('dashboard')}>Dashboard</button>
-          <button onClick={() => setCurrentView('create')}>Create Campaign</button>
-          <button onClick={() => setCurrentView('history')}>History</button>
-        </div>
-      </nav>
-
-      <main className="main-content">
-        {currentView === 'dashboard' && <Dashboard setCurrentView={setCurrentView} />}
-        {currentView === 'create' && <CampaignForm />}
-        {currentView === 'history' && <CampaignHistory />}
-      </main>
-    </div>
+    <Router>
+      <div className="App">
+        <Navbar user={user} onLogout={handleLogout} />
+        
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
+          <Route path="/register" element={!user ? <Register onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
+          <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
+          <Route path="/generator" element={user ? <CampaignGenerator /> : <Navigate to="/login" />} />
+          <Route path="/history" element={user ? <CampaignHistory /> : <Navigate to="/login" />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

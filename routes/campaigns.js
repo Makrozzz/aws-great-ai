@@ -5,14 +5,32 @@ const { generateCampaign, generateTextContent, generateImageContent, saveCampaig
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
-router.post('/generate', upload.single('image'), async (req, res) => {
+router.post('/generate', upload.array('productImages', 5), async (req, res) => {
   try {
-    const { description } = req.body;
-    const imagePath = req.file?.path;
+    const {
+      description,
+      contentStyle,
+      platformFormat,
+      toneOfVoice,
+      mediaType,
+      language
+    } = req.body;
     
-    const campaign = await generateCampaign(description, imagePath);
+    const imagePaths = req.files?.map(file => file.path) || [];
+    
+    const campaign = await generateCampaign({
+      description,
+      contentStyle,
+      platformFormat,
+      toneOfVoice,
+      mediaType,
+      language,
+      imagePaths
+    });
+    
     res.json(campaign);
   } catch (error) {
+    console.error('Generate campaign error:', error);
     res.status(500).json({ error: error.message });
   }
 });

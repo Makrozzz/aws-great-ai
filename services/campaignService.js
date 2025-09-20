@@ -3,18 +3,58 @@ const { saveCampaignToDB, getCampaignsFromDB } = require('./dbService');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 
-async function generateCampaign(description, imagePath) {
-  // Generate enhanced campaign content
-  const prompt = `Create a marketing campaign for: ${description}. 
+async function generateCampaign(campaignData) {
+  const {
+    description,
+    contentStyle = 'professional',
+    platformFormat = 'instagram-post',
+    toneOfVoice = 'casual',
+    mediaType = 'image',
+    language = 'english',
+    imagePaths = []
+  } = campaignData;
+
+  // Create enhanced prompt based on campaign parameters
+  const prompt = `Create a marketing campaign for: ${description}
+  
+  Campaign Requirements:
+  - Content Style: ${contentStyle}
+  - Platform: ${platformFormat}
+  - Tone: ${toneOfVoice}
+  - Language: ${language}
+  - Target Market: Malaysia
+  
   Generate:
-  1. A compelling caption (max 150 words)
-  2. 5 relevant hashtags
+  1. A compelling caption (max 150 words) that matches the style and tone
+  2. 8 relevant hashtags for Malaysian market
   3. A detailed image description for product visualization
+  
+  ${language === 'bilingual' ? 'Mix English and Bahasa Malaysia naturally.' : ''}
+  ${language === 'malay' ? 'Write in Bahasa Malaysia.' : ''}
   
   Format as JSON: {"caption": "", "hashtags": [], "imagePrompt": ""}`;
   
   const campaign = await generateText(prompt);
   console.log('Bedrock AI Response:', campaign);
+  
+  // Generate image if needed
+  let mediaUrl = null;
+  let videoUrl = null;
+  
+  if (mediaType === 'image' || mediaType === 'both') {
+    try {
+      const imageResult = await generateImageContent(campaign.imagePrompt || description);
+      mediaUrl = imageResult.imageUrl;
+    } catch (error) {
+      console.error('Image generation failed:', error);
+      mediaUrl = "https://via.placeholder.com/400x400/667eea/ffffff?text=Generated+Image";
+    }
+  }
+  
+  if (mediaType === 'video' || mediaType === 'both') {
+    // Mock video URL for now
+    videoUrl = "https://via.placeholder.com/400x400/764ba2/ffffff?text=Generated+Video";
+  }
   
   // Extract keywords from description
   const keywords = extractKeywords(description);
@@ -22,10 +62,16 @@ async function generateCampaign(description, imagePath) {
   return {
     id: uuidv4(),
     description,
+    contentStyle,
+    platformFormat,
+    toneOfVoice,
+    mediaType,
+    language,
     caption: campaign.caption,
     hashtags: campaign.hashtags,
     keywords,
-    imageUrl: "https://picsum.photos/512/512",
+    mediaUrl,
+    videoUrl,
     createdAt: new Date()
   };
 }
